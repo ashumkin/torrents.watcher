@@ -1,0 +1,27 @@
+{
+	:"rutracker.org" => {
+		:enabled => 1,
+		:login => {
+			# check already logged in page URL the same as login page
+			# :check => 'http://login.rutracker.org/forum/login.php',
+			# login page URL
+			:form => 'http://login.rutracker.org/forum/login.php',
+			# loging fields
+			:fields => {
+				# symbols are taken from user config variables
+				# other values are set as is
+				:user => :login_username,
+				:password => :login_password,
+				# кнопка "Вход" - обязательное поле(sic!)
+				:login => '%C2%F5%EE%E4'
+			},
+			:success_re => /login_password/
+		},
+		:torrent => {
+			:replace_url => true,
+			:match_re => /http:\/\/rutracker\.org\/forum\/viewtopic\.php\?t=(\d+)/,
+			:replace => 'http://dl.rutracker.org/forum/dl.php?t=\1',
+			:post => true
+		}
+	}
+}

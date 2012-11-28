@@ -1,0 +1,10 @@
+{
+	:"kinokopilka.tv.rss" => {
+		:enabled => 1,
+		:login => :"kinokopilka.tv",
+		:torrent => {
+			:match_re => /<link>(\S*\/xbt_files\/\d+\.torrent\?.+)<\/link>/,
+			:match_index => 1
+		}
+	}
+}
