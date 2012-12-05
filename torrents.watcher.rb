@@ -45,6 +45,7 @@ class TCmdLineOptions < OptionParser
 		@options.relogin = false
 		@options.cache = @options.config_dir + '/cache'
 		@options.sync = false
+		@options.run = false
 		@options.dry_run = false
 		init
 		parse!(args)
@@ -82,6 +83,10 @@ private
 			@options.dry_run = true
 		end
 
+		on('-r', '--run', 'Run fetching') do
+			@options.run = true
+		end
+
 		on('-s', '--sync FOLDER', 'Sync with transmission watch folder') do |f|
 			@options.sync_folder = f
 			@options.sync = true
@@ -98,6 +103,7 @@ private
 	end
 
 	def validate
+		puts self unless @options.run || @options.sync || @options.cleanup
 	end
 end
 
@@ -476,10 +482,9 @@ class TWatcher
 	def run
 		if @opts.options.cleanup
 			cleanup
-		elsif @opts.options.sync
-			sync(@opts.options.sync_folder)
 		else
-			@trackers.run
+			@trackers.run if @opts.options.run
+			sync(@opts.options.sync_folder) if @opts.options.sync
 		end
 	end
 
