@@ -3,6 +3,7 @@
 		:enabled => 1,
 		:login => :"kinokopilka.tv",
 		:torrent => {
+			:url => :config,
 			:match_re => /<link>(\S*\/xbt_files\/\d+\.torrent\?.+)<\/link>/,
 			:match_index => 1
 		}

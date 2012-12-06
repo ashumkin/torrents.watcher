@@ -325,6 +325,7 @@ private
 		torrents = @hash[:torrent][:url]
 		torrents = logins[:torrents] unless torrents
 		torrents = [torrents] if torrents.kind_of?(String)
+		torrents = @owner.logins[@name][:torrents] if torrents == :config
 		links = {}
 		params = ['--content-disposition', '-N']
 		if torrents.kind_of?(Array)
