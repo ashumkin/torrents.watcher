@@ -313,8 +313,9 @@ private
 		File.open(headers, 'r') do |f|
 			while line = f.gets
 				if m = /Content-Disposition: attachment; filename="(.+)"/i.match(line)
-					log(Logger::DEBUG, 'Filename is ' + m[1])
-					return m[1]
+					f = m[1].gsub(/\\([0-8]{3})/) { [$1.to_i(8)].pack('C')}
+					log(Logger::DEBUG, 'Filename is ' + f)
+					return f
 				end
 			end
 		end
