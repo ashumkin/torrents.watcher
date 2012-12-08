@@ -17,8 +17,8 @@
 			:success_re => /password/
 		},
 		:torrent => {
-			:match_re => /<a href="(\S*\/xbt_files\/\d+)"[^>]*>([^><]+)<\/a>/,
-			:match_index => 1
+			:match_re => /<a href="(\S*\/xbt_files\/\d+)"[^>]*>(.*?&quot;(.+?)&quot;).*?<\/a>/,
+			:match_index => [1, 3]
 		}
 	}
 }

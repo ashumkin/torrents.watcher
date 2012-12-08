@@ -279,8 +279,13 @@ private
 
 	def do_scan_torrent(url, regexp)
 		match_re = @hash[:torrent][:match_re]
-		match_index = @hash[:torrent][:match_index]
+		mi = match_index = @hash[:torrent][:match_index].dup
 		match_index ||= 0
+		if mi.kind_of?(Array)
+			match_index = mi.shift
+		else
+			mi = [mi]
+		end
 		a = {}
 		File.open(temp_html) do |f|
 			while line = f.gets
@@ -291,7 +296,12 @@ private
 					if regexp.kind_of?(TrueClass) \
 							|| regexp.match(line)
 						log(Logger::DEBUG, 'Matched to ' + regexp.to_s)
-						a[link] = url
+						if mi.size == 1
+							name = m[mi[0]]
+						else
+							name = mi.map { |i| m[i] }
+						end
+						a[link] = name
 					else
 						log(Logger::DEBUG, 'But not matched to ' + regexp.to_s)
 					end
@@ -345,8 +355,8 @@ private
 		end
 		params << '--post-data ""' if post
 		ChDir.new(tmp) do
-			links.each do |link, ref|
-				log(Logger::INFO, 'Fetching ' + link)
+			links.each do |link, name|
+				log(Logger::INFO, "Fetching #{link} / #{name}")
 				run_wget(link, params)
 				filename = get_downloaded_filename
 				if filename
