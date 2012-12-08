@@ -288,7 +288,8 @@ private
 				if m = match_re.match(line)
 					link = m[match_index]
 					log(Logger::DEBUG, "Found #{link} (#{m[0]})")
-					if regexp.match(line)
+					if regexp.kind_of?(TrueClass) \
+							|| regexp.match(line)
 						log(Logger::DEBUG, 'Matched to ' + regexp.to_s)
 						a[link] = url
 					else
@@ -332,7 +333,7 @@ private
 		if torrents.kind_of?(Array)
 			ts = {}
 			torrents.each do |t|
-				ts[t] = //
+				ts[t] = true
 			end
 			torrents = ts
 		end
