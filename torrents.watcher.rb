@@ -38,17 +38,16 @@ class TCmdLineOptions < OptionParser
 		super()
 		@options = TOptions.new
 		@options.config_dir = ENV['HOME'] + '/.torrents.watcher'
-		@options.config = @options.config_dir + '/.configrc'
 		@options.plugins = File.dirname(__FILE__) + '/trackers.d/'
 		@options.plugins_mask = '*.tracker'
 		@options.level = Logger::INFO
 		@options.relogin = false
-		@options.cache = @options.config_dir + '/cache'
 		@options.sync = false
 		@options.run = false
 		@options.dry_run = false
 		init
 		parse!(args)
+		init_configs
 		validate
 	end
 
@@ -57,6 +56,15 @@ class TCmdLineOptions < OptionParser
 	end
 
 private
+	def init_configs
+		@options.config = @options.config_dir + '/.configrc' unless @options.config
+		@options.cache = @options.config_dir + '/cache'
+	end
+
+	def validate
+		puts self unless @options.run || @options.sync || @options.cleanup
+	end
+
 	def init
 		separator ''
 		separator 'Options:'
@@ -69,6 +77,10 @@ private
 		on('-c', '--config CONFIG',
 				'Use configuration file CONFIG instead of ~/.torrents.watcher.rc') do |c|
 			@options.config = c
+		end
+
+		on('-D', '--dir DIR', 'Directory of config and cache. Default is ~/.torrents.watcher/') do |d|
+			@options.config_dir = d
 		end
 
 		on('-d', '--debug', 'Debug mode. Print all messages') do
@@ -100,10 +112,6 @@ private
 			puts self
 			exit
 		end
-	end
-
-	def validate
-		puts self unless @options.run || @options.sync || @options.cleanup
 	end
 end
 
