@@ -99,9 +99,17 @@ private
 			@options.run = true
 		end
 
+		on('-R', '--no-run', 'DO NOT fetching (can be used with --sync)') do
+			@options.run = false
+		end
+
 		on('-s', '--sync FOLDER', 'Sync with transmission watch folder') do |f|
 			@options.sync_folder = f
 			@options.sync = true
+		end
+
+		on('-S', '--no-sync', 'DO NOT sync (can be used with --run)') do |f|
+			@options.sync = false
 		end
 
 		on('-q', '--quiet', 'Quiet mode') do
