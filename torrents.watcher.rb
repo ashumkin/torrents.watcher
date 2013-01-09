@@ -348,6 +348,16 @@ private
 		end
 	end
 
+	def file_is_torrent(filename)
+		File.open(filename, 'r') do |f|
+			if (f.read(11) == 'd8:announce')
+				return true
+			end
+		end
+		log(Logger::DEBUG, "#{filename} is NOT a torrent file!")
+		return false
+	end
+
 	def fetch_urls
 		post = @hash[:torrent][:post]
 		torrents = @hash[:torrent][:url]
@@ -375,7 +385,7 @@ private
 				log(Logger::INFO, "Fetching #{link} / #{name}")
 				run_wget(link, params)
 				filename = get_downloaded_filename
-				if filename
+				if filename && file_is_torrent(temp_html)
 					log(Logger::DEBUG, "Moving #{temp_html} -> #{filename}")
 					FileUtils.mv(temp_html, filename)
 				end
