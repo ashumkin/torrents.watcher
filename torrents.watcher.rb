@@ -530,10 +530,9 @@ class TWatcher
 private
 	def cleanup
 		Dir["#{@opts.cache}/*.torrent"].sort.each do |t|
-			log(Logger::INFO, "Removing #{t}")
-			if @opts.options.dry_run
-				log(Logger::INFO, "Dry run")
-			else
+			s = 'Dry run. ' if @opts.options.dry_run
+			log(Logger::INFO, "#{s.to_s}Removing #{t}")
+			unless @opts.options.dry_run
 				File.unlink(t)
 			end
 		end
@@ -558,10 +557,9 @@ private
 			end
 			if copy
 				file = "#{folder}/#{File.basename(t)}"
-				log(Logger::INFO, "Copy #{t} -> #{file}")
-				if @opts.options.dry_run
-					log(Logger::INFO, "Dry run")
-				else
+				s = 'Dry run. ' if @opts.options.dry_run
+				log(Logger::INFO, "#{s.to_s}Copy #{t} -> #{file}")
+				unless @opts.options.dry_run
 					FileUtils.cp(t, file)
 				end
 			end
