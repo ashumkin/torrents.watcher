@@ -38,7 +38,8 @@ class TCmdLineOptions < OptionParser
 		super()
 		@version = '0.3'
 		@options = TOptions.new
-		@options.config_dir = ENV['HOME'] + '/.torrents.watcher'
+		@script_name = 'torrents.watcher'
+		@options.config_dir = ENV['HOME'] + '/.' + @script_name
 		@options.plugins = File.dirname(__FILE__) + '/trackers.d/'
 		@options.plugins_mask = '*.tracker'
 		@options.level = Logger::INFO
@@ -62,6 +63,10 @@ class TCmdLineOptions < OptionParser
 
 	def cache
 		return @options.cache
+	end
+
+	def lock_file
+		return self.cache + '/.' + @script_name + '.lock'
 	end
 
 private
@@ -534,15 +539,39 @@ class TWatcher
 	end
 
 	def run
-		if @opts.options.cleanup
-			cleanup
-		else
-			@trackers.run if @opts.options.run
-			sync(@opts.options.sync_folder) if @opts.options.sync
+		unless check_lock
+			log(Logger::ERROR, @opts.lock_file + ' exists. Remove it if you`re sure another instance is not running. Exiting')
+			return
+		end
+		set_lock
+		begin
+			if @opts.options.cleanup
+				cleanup
+			else
+				@trackers.run if @opts.options.run
+				sync(@opts.options.sync_folder) if @opts.options.sync
+			end
+		ensure
+			remove_lock
 		end
 	end
 
 private
+	def check_lock
+		return !File.exists?(@opts.lock_file)
+	end
+
+	def remove_lock
+		log(Logger::DEBUG, 'Removing .lock file: ' + @opts.lock_file)
+		File.unlink(@opts.lock_file)
+	end
+
+	def set_lock
+		# simple "touch" equivalent
+		log(Logger::DEBUG, 'Setting .lock file: ' + @opts.lock_file)
+		File.open(@opts.lock_file, 'w') {}
+	end
+
 	def cleanup
 		Dir["#{@opts.cache}/*.torrent"].sort.each do |t|
 			s = 'Dry run. ' if @opts.options.dry_run
