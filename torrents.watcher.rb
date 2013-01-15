@@ -48,7 +48,7 @@ class TCmdLineOptions < OptionParser
 		@options.run = false
 		@options.dry_run = false
 		@options.levels = {}
-		@options.def_levels = [:run, :sync]
+		@options.def_levels = [:common, :run, :sync]
 		@options.def_levels.each do |level|
 			@options.levels[level] = Logger::INFO
 		end
@@ -416,15 +416,18 @@ private
 			torrents = ts
 		end
 		torrents.each do |t, re|
-			log(Logger::INFO, "Checking #{t}")
+			log_separator(t)
 			if run_wget(t)
 				links.merge!(scan_torrent(t, re))
 			end
+			log_separator(t, '<')
 		end
 		params << '--post-data ""' if post
 		ChDir.new(tmp) do
+			log_separator('FETCHING: BEGIN')
 			links.each do |link, name|
-				log(Logger::INFO, "Fetching #{link} / #{name}")
+				log_separator("FETCHING: #{link}")
+				log(Logger::INFO, "Fetching: #{name}")
 				run_wget(link, params)
 				filename = get_downloaded_filename
 				if filename && file_is_torrent(temp_html)
@@ -432,6 +435,7 @@ private
 					FileUtils.mv(temp_html, filename)
 				end
 			end
+			log_separator('FETCHING: END')
 		end
 	end
 
@@ -489,6 +493,10 @@ private
 		@owner.log(severity, msg)
 	end
 
+	def log_separator(header, char = '>')
+		@owner.log_separator(header, char)
+	end
+
 	def cleanup
 		log(Logger::INFO, 'Cleanup for ' + @name.to_s)
 		File.unlink(cookies) if File.exists?(cookies)
@@ -497,9 +505,11 @@ public
 	def run
 		cleanup if @owner.opts.options.relogin
 		return unless @valid && @enabled
+		log_separator(name, '/')
 		log(Logger::INFO, "Tracker #{name} is being checked")
 		return unless login
 		fetch_urls
+		log_separator(name, '\\')
 	end
 end
 
@@ -527,11 +537,18 @@ class TrackersList < ::Array
 		@owner.log(severity, msg)
 	end
 
+	def log_separator(header, char = '>')
+		@owner.log_separator(header, char)
+	end
+
 	def run
 		return unless @valid
+		log_separator('RUN: BEGIN')
+
 		self.each do |tracker|
 			tracker.run
 		end
+		log_separator('RUN: END', '<')
 	end
 
 	def find_tracker(name)
@@ -552,6 +569,8 @@ class TWatcher
 	def initialize(opts)
 		@opts = opts
 		@logger = Logger.new(STDOUT)
+		@logger.level = @opts.options.levels[:common]
+		log_separator('BEGIN', '-')
 		@trackers = TrackersList.new(self, @opts)
 	end
 
@@ -559,7 +578,14 @@ class TWatcher
 		@logger.log(severity, msg)
 	end
 
+	def log_separator(header, char = '>', count = 10)
+		s = char.to_s * count
+		log(Logger::INFO, "#{s} #{header} #{s}")
+	end
+
 	def run
+		begin
+		@logger.level = @opts.options.levels[:common]
 		unless check_lock
 			log(Logger::ERROR, @opts.lock_file + ' exists. Remove it if you`re sure another instance is not running. Exiting')
 			return
@@ -575,7 +601,11 @@ class TWatcher
 				sync(@opts.options.sync_folder) if @opts.options.sync
 			end
 		ensure
+			@logger.level = @opts.options.levels[:common]
 			remove_lock
+		end
+		ensure
+			log_separator('END', '-')
 		end
 	end
 
@@ -596,6 +626,7 @@ private
 	end
 
 	def cleanup
+		log_separator('CLEANUP: BEGIN')
 		Dir["#{@opts.cache}/*.torrent"].sort.each do |t|
 			s = 'Dry run. ' if @opts.options.dry_run
 			log(Logger::INFO, "#{s.to_s}Removing #{t}")
@@ -603,9 +634,11 @@ private
 				File.unlink(t)
 			end
 		end
+		log_separator('CLEANUP: END', '<')
 	end
 
 	def sync(folder)
+		log_separator('SYNC: BEGIN')
 		unless File.exists?(folder)
 			log(Logger::ERROR, "Folder #{folder} DOES NOT exist!")
 			return false
@@ -631,6 +664,7 @@ private
 				end
 			end
 		end
+		log_separator('SYNC: END', '<')
 	end
 end
 
