@@ -42,11 +42,17 @@ class TCmdLineOptions < OptionParser
 		@options.config_dir = ENV['HOME'] + '/.' + @script_name
 		@options.plugins = File.dirname(__FILE__) + '/trackers.d/'
 		@options.plugins_mask = '*.tracker'
-		@options.level = Logger::INFO
+
 		@options.relogin = false
 		@options.sync = false
 		@options.run = false
 		@options.dry_run = false
+		@options.levels = {}
+		@options.def_levels = [:run, :sync]
+		@options.def_levels.each do |level|
+			@options.levels[level] = Logger::INFO
+		end
+		@options.def_levels_joined  = @options.def_levels.join(',')
 		init
 		begin
 			@args = args.dup
@@ -85,6 +91,17 @@ private
 		end
 	end
 
+	def set_log_level(category, value)
+		if category
+			category.map!{ |a| a.to_sym }
+		else
+			category = @options.def_levels
+		end
+		category.each do |level|
+			@options.levels[level] = value
+		end
+	end
+
 	def init
 		separator ''
 		separator 'Options:'
@@ -103,8 +120,9 @@ private
 			@options.config_dir = d
 		end
 
-		on('-d', '--debug', 'Debug mode. Print all messages') do
-			@options.level = Logger::DEBUG
+		on('-d', '--debug [' + @options.def_levels_joined + ']', Array, 'Debug mode. Print all messages',
+				@options.def_levels_joined) do |l|
+			set_log_level(l, Logger::DEBUG)
 		end
 
 		on('-L', '--relogin', 'Relogin (clean cookies)') do
@@ -132,8 +150,12 @@ private
 			@options.sync = false
 		end
 
-		on('-q', '--quiet', 'Quiet mode') do
-			@options.level = Logger::ERROR
+		on('-q', '--quiet [' + @options.def_levels_joined + ']', Array, 'Quiet mode', @options.def_levels_joined) do |q|
+			set_log_level(q, Logger::ERROR)
+		end
+
+		on('-v', '--verbose [' + @options.def_levels_joined + ']', Array, 'Verbose mode', @options.def_levels_joined) do |q|
+			set_log_level(q, Logger::INFO)
 		end
 
 		on_tail('-h', '--help', 'Show this help') do
@@ -530,7 +552,6 @@ class TWatcher
 	def initialize(opts)
 		@opts = opts
 		@logger = Logger.new(STDOUT)
-		@logger.level = @opts.options.level
 		@trackers = TrackersList.new(self, @opts)
 	end
 
@@ -548,7 +569,9 @@ class TWatcher
 			if @opts.options.cleanup
 				cleanup
 			else
+				@logger.level = @opts.options.levels[:run]
 				@trackers.run if @opts.options.run
+				@logger.level = @opts.options.levels[:sync]
 				sync(@opts.options.sync_folder) if @opts.options.sync
 			end
 		ensure
