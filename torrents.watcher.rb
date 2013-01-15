@@ -544,6 +544,8 @@ private
 			log(Logger::ERROR, "Folder #{folder} DOES NOT exist!")
 			return false
 		end
+		# remove trailing path delimiter
+		folder.gsub!(/\/$/, '')
 		Dir["#{@opts.cache}/*.torrent"].sort.each do |t|
 			file = "#{folder}/#{File.basename(t)}.loaded"
 			copy = ! File.exists?(file)
