@@ -36,6 +36,7 @@ class TCmdLineOptions < OptionParser
 
 	def initialize(args)
 		super()
+		@version = '0.3'
 		@options = TOptions.new
 		@options.config_dir = ENV['HOME'] + '/.torrents.watcher'
 		@options.plugins = File.dirname(__FILE__) + '/trackers.d/'
@@ -46,7 +47,15 @@ class TCmdLineOptions < OptionParser
 		@options.run = false
 		@options.dry_run = false
 		init
-		parse!(args)
+		begin
+			@args = args.dup
+			@args_parsed = parse!(args)
+		rescue ParseError
+			warn $!
+			Kernel::warn self
+			exit!(1)
+		return
+		end
 		init_configs
 		validate
 	end
@@ -62,7 +71,13 @@ private
 	end
 
 	def validate
-		puts self unless @options.run || @options.sync || @options.cleanup
+		# if there are non-options parameters
+		# or there are no parameters at all
+		# show usage
+		if @args.empty? || !@args_parsed.empty?
+			puts self
+			exit(1)
+		end
 	end
 
 	def init
@@ -571,7 +586,7 @@ end
 
 # if run directly
 if __FILE__ == $0
-	cmdLine = TorrentsWatcher::TCmdLineOptions.new(ARGV)
+	cmdLine = TorrentsWatcher::TCmdLineOptions.new(ARGV.dup)
 	watcher = TorrentsWatcher::TWatcher.new(cmdLine)
 	watcher.run
 end
