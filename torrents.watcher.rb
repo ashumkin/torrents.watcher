@@ -203,12 +203,12 @@ class Tracker
 			content = f.read
 		end
 		begin
-			hash = eval(content)
+			conf = eval(content)
 		rescue SyntaxError => se
-			hash = {}
+			conf = []
 		end
-		if hash.kind_of?(Hash) && !hash.keys[0].nil?
-			return true, hash
+		if conf.kind_of?(Hash) && !conf.keys[0].nil?
+			return true, conf
 		else
 			return false, {}
 		end
