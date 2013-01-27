@@ -420,7 +420,7 @@ private
 			if run_wget(t)
 				links.merge!(scan_torrent(t, re))
 			end
-			log_separator(t, '<')
+			log_separator(nil, '<')
 		end
 		params << '--post-data ""' if post
 		ChDir.new(tmp) do
@@ -570,6 +570,7 @@ class TWatcher
 		@opts = opts
 		@logger = Logger.new(STDOUT)
 		@logger.level = @opts.options.levels[:common]
+		log_separator(File.basename(__FILE__) + ' version ' + opts.version)
 		log_separator('BEGIN', '-')
 		@trackers = TrackersList.new(self, @opts)
 	end
@@ -580,7 +581,10 @@ class TWatcher
 
 	def log_separator(header, char = '>', count = 10)
 		s = char.to_s * count
-		log(Logger::INFO, "#{s} #{header} #{s}")
+		if header
+			s = "#{s} #{header} #{s}"
+		end
+		log(Logger::INFO, s)
 	end
 
 	def run
