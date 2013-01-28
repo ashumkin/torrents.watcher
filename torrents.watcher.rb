@@ -31,12 +31,16 @@ class TOptions < OpenStruct
 	end
 end
 
+class ::Logger
+	EXTRA_DEBUG = -1
+end
+
 class TCmdLineOptions < OptionParser
 	attr_reader :options
 
 	def initialize(args)
 		super()
-		@version = '0.3'
+		@version = '0.4'
 		@options = TOptions.new
 		@script_name = 'torrents.watcher'
 		@options.config_dir = ENV['HOME'] + '/.' + @script_name
@@ -125,6 +129,10 @@ private
 			set_log_level(l, Logger::DEBUG)
 		end
 
+		on('-x', '--extra-debug', 'Extra debug mode') do
+			set_log_level([:common], Logger::EXTRA_DEBUG)
+		end
+
 		on('-L', '--relogin', 'Relogin (clean cookies)') do
 			@options.relogin = true
 		end
@@ -197,6 +205,15 @@ class Tracker
 	end
 
 	def self.read_config_file(file)
+		@valid, @config = self.do_read_config_file_v1(file)
+		# if file exists but not valid Ruby config
+		if @valid === false
+			@valid, @config = self.do_read_config_file_v2(file)
+		end
+		return @valid, @config
+	end
+
+	def self.do_read_config_file_v1(file)
 		content = ''
 		return nil, {} unless File.exists?(file)
 		File.open(file, 'r') do |f|
@@ -212,6 +229,40 @@ class Tracker
 		else
 			return false, {}
 		end
+	end
+
+	def self.do_read_config_file_v2(file)
+		config = {}
+		File.open(file, 'r') do |f|
+			while line = f.gets
+				line.strip!
+				if m = /^tracker:?\s+(.+)$/i.match(line)
+					tracker = m[1].to_sym
+					config[tracker] = {}
+					config[tracker][:torrents] = []
+					config[tracker][:enabled] = true
+				elsif !tracker
+					next
+				elsif m = /^(http:\/\/\S+)(\s+(.+))?$/i.match(line)
+					torrent = m[1]
+					if re = m[2]
+						# strip whitespaces around
+						# and extract <regexp> from /<regexp>/
+						re.strip!.gsub!(/^\/|\/$/, '')
+						torrent = { torrent => Regexp.new(re) }
+					end
+					config[tracker][:torrents] << torrent
+				elsif m = /^(\w+)\s+(.+)$/.match(line)
+					key = m[1].to_sym
+					value = m[2]
+					config[tracker][key] = value
+				end
+			end
+		end
+		config.each do |tracker, conf|
+			conf[:enabled] = eval(conf[:enabled])
+		end
+		return true, config
 	end
 
 	def login_method
@@ -406,12 +457,17 @@ private
 		torrents = logins[:torrents] unless torrents
 		torrents = [torrents] if torrents.kind_of?(String)
 		torrents = @owner.logins[@name][:torrents] if torrents == :config
+		torrents = [torrents] if torrents.kind_of?(Hash)
 		links = {}
 		params = ['--content-disposition', '-N']
 		if torrents.kind_of?(Array)
 			ts = {}
 			torrents.each do |t|
-				ts[t] = true
+				if t.kind_of?(Hash)
+					ts.merge!(t)
+				else
+					ts[t] = true
+				end
 			end
 			torrents = ts
 		end
@@ -530,6 +586,7 @@ class TrackersList < ::Array
 				log(Logger::WARN, "WARNING! Config #{file} is not valid")
 			end
 		end
+		dump_config(@logins)
 		read
 	end
 
@@ -562,6 +619,10 @@ private
 		@opts.options.files.each do |file|
 			self << Tracker.new(self, file)
 		end
+	end
+
+	def dump_config(file)
+		log(Logger::EXTRA_DEBUG, file.inspect)
 	end
 end
 
