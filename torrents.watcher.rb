@@ -236,7 +236,10 @@ class Tracker
 		File.open(file, 'r') do |f|
 			while line = f.gets
 				line.strip!
-				if m = /^tracker:?\s+(.+)$/i.match(line)
+				if m = /^#/.match(line)
+					# skip commented line
+					next
+				elsif m = /^tracker:?\s+(.+)$/i.match(line)
 					tracker = m[1].to_sym
 					config[tracker] = {}
 					config[tracker][:torrents] = []
