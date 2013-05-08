@@ -47,6 +47,7 @@ class TCmdLineOptions < OptionParser
 		@options.plugins = File.dirname(__FILE__) + '/trackers.d/'
 		@options.plugins_mask = '*.tracker'
 
+		@options.list_trackers = false
 		@options.relogin = false
 		@options.sync = false
 		@options.run = false
@@ -131,6 +132,11 @@ private
 
 		on('-x', '--extra-debug', 'Extra debug mode') do
 			set_log_level([:common], Logger::EXTRA_DEBUG)
+		end
+
+		on('-l', '--list-trackers', 'List supported trackers') do
+			@options.list_trackers = true
+			set_log_level(nil, Logger::WARN)
 		end
 
 		on('-L', '--relogin', 'Relogin (clean cookies)') do
@@ -593,6 +599,12 @@ class TrackersList < ::Array
 		read
 	end
 
+	def list
+		self.each do |tracker|
+			puts tracker.name
+		end
+	end
+
 	def log(severity, msg)
 		@owner.log(severity, msg)
 	end
@@ -653,6 +665,10 @@ class TWatcher
 
 	def run
 		begin
+		if @opts.options.list_trackers
+			list
+			return
+		end
 		@logger.level = @opts.options.levels[:common]
 		unless check_lock
 			log(Logger::ERROR, @opts.lock_file + ' exists. Remove it if you`re sure another instance is not running. Exiting')
@@ -680,6 +696,10 @@ class TWatcher
 private
 	def check_lock
 		return !File.exists?(@opts.lock_file)
+	end
+
+	def list
+		@trackers.list
 	end
 
 	def remove_lock
