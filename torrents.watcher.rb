@@ -40,7 +40,7 @@ class TCmdLineOptions < OptionParser
 
 	def initialize(args)
 		super()
-		@version = '0.4'
+		@version = '0.5'
 		@options = TOptions.new
 		@script_name = 'torrents.watcher'
 		@options.config_dir = ENV['HOME'] + '/.' + @script_name
@@ -666,6 +666,9 @@ class TWatcher
 
 	def run
 		begin
+			Signal.trap("HUP") do
+				$stderr.puts "#{$$}: I'm working"
+			end
 		if @opts.options.list_trackers
 			list
 			return
@@ -696,7 +699,24 @@ class TWatcher
 
 private
 	def check_lock
-		return !File.exists?(@opts.lock_file)
+		return true unless File.exists?(@opts.lock_file)
+		log(Logger::DEBUG, @opts.lock_file + ' file exists')
+		File.open(@opts.lock_file, 'r') do |f|
+			pid = f.gets
+			# if file is not empty
+			pid.chomp! if pid
+			log(Logger::DEBUG, 'PID is equal to ' + pid.to_s)
+			begin
+				r = Process.kill("HUP", pid.to_i) if pid.to_i > 0
+			rescue Errno::ESRCH
+				# no such process ID
+				r = 0
+			rescue
+				r = -1
+			end
+			log(Logger::DEBUG, 'KILL result = ' + r.to_s)
+			return r == 0
+		end
 	end
 
 	def list
@@ -711,7 +731,9 @@ private
 	def set_lock
 		# simple "touch" equivalent
 		log(Logger::DEBUG, 'Setting .lock file: ' + @opts.lock_file)
-		File.open(@opts.lock_file, 'w') {}
+		File.open(@opts.lock_file, 'w') do |f|
+			f.write($$)
+		end
 	end
 
 	def cleanup
