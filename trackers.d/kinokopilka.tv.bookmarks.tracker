@@ -4,7 +4,7 @@
 		:login => :"kinokopilka.tv",
 		:torrent => {
 			:url => 'http://www.kinokopilka.tv/xbt_files/bookmarked',
-			:match_re => /<a href="(\S*\/x\/[a-zA-Z0-9=]+--[0-9a-f]+)"[^>]*>(.*?&quot;(.+?)&quot;).*?<\/a>/,
+			:match_re => /<a href="(\S*\/x\/[a-zA-Z0-9=+]+--[0-9a-f]+)"[^>]*>(.*?&quot;(.+?)&quot;).*?<\/a>/,
 			:match_index => [1, 3]
 		}
 	}
