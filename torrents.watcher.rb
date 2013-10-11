@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# vim: set tabstop=4 shiftwidth=4 noexpandtab :
 
 =begin
 =end
