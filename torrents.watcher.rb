@@ -41,7 +41,7 @@ class TCmdLineOptions < OptionParser
 
 	def initialize(args)
 		super()
-		@version = '0.5'
+		@version = '0.6'
 		@options = TOptions.new
 		@script_name = 'torrents.watcher'
 		@options.config_dir = ENV['HOME'] + '/.' + @script_name
@@ -749,6 +749,14 @@ private
 		log_separator('CLEANUP: END', '<')
 	end
 
+	def file_exists?(filename)
+		['.loaded', '.added'].each do |ext|
+			file = filename + ext
+			return true, file if File.exists?(file)
+		end
+		return false, filename
+	end
+
 	def sync(folder)
 		log_separator('SYNC: BEGIN')
 		unless File.exists?(folder)
@@ -758,17 +766,20 @@ private
 		# remove trailing path delimiter
 		folder.gsub!(/\/$/, '')
 		Dir["#{@opts.cache}/*.torrent"].sort.each do |t|
-			file = "#{folder}/#{File.basename(t)}.loaded"
-			copy = ! File.exists?(file)
-			if ! copy
-				log(Logger::DEBUG, "File #{file} exists")
-				copy = File.size(file) != File.size(t)
-				log(Logger::DEBUG, "But size match") unless copy
+			file = folder + '/' + File.basename(t)
+			exists, file_e = file_exists?(file)
+			if exists
+				log(Logger::DEBUG, "File #{file_e} exists")
+				exists = File.size(file_e) == File.size(t)
+				if exists
+					log(Logger::DEBUG, 'And size matches')
+				else
+					log(Logger::DEBUG, 'But size does not match')
+				end
 			else
 				log(Logger::DEBUG, "File #{file} DOES NOT exist")
 			end
-			if copy
-				file = "#{folder}/#{File.basename(t)}"
+			unless exists
 				s = 'Dry run. ' if @opts.options.dry_run
 				log(Logger::INFO, "#{s.to_s}Copy #{t} -> #{file}")
 				unless @opts.options.dry_run
