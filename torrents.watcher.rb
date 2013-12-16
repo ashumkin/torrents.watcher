@@ -186,7 +186,7 @@ class Tracker
 	def initialize(owner, config)
 		@owner = owner
 		@enabled = true
-		@valid, @hash = self.class.read_config_file(config)
+		@valid, @hash = self.class.read_config_file(config, self, 'Reading tracker description file %s')
 		unless @valid
 			log(Logger::WARN, "WARNING! File #{config} is not a valid tracker description!")
 			return
@@ -198,6 +198,7 @@ class Tracker
 		@enabled = self.class.test_enabled(@hash[:enabled])
 		@enabled &&= self.class.test_enabled(logins[:enabled]) if logins
 		@login_method = nil
+		log(Logger::DEBUG, 'Tracker: %s; Enabled: %s' % [@name, @enabled.to_s.upcase])
 	end
 
 	def self.test_enabled(enabled)
@@ -211,12 +212,15 @@ class Tracker
 		return true
 	end
 
-	def self.read_config_file(file)
+	def self.read_config_file(file, owner, message)
+		owner.log(Logger::DEBUG, 'v1: ' + message % file)
 		@valid, @config = self.do_read_config_file_v1(file)
 		# if file exists but not valid Ruby config
 		if @valid === false
+			owner.log(Logger::DEBUG, 'v2: ' + message % file)
 			@valid, @config = self.do_read_config_file_v2(file)
 		end
+		owner.log(Logger::DEBUG, 'File valid? ' + @valid.to_s.upcase)
 		return @valid, @config
 	end
 
@@ -407,6 +411,7 @@ private
 		end
 		a = {}
 		File.open(temp_html) do |f|
+			log(Logger::DEBUG, 'Scanning file %s for %s' % [temp_html, match_re])
 			while line = f.gets
 				line = convert_line(line) if @charset
 				if m = match_re.match(line)
@@ -555,10 +560,6 @@ private
 		return r
 	end
 
-	def log(severity, msg)
-		@owner.log(severity, msg)
-	end
-
 	def log_separator(header, char = '>')
 		@owner.log_separator(header, char)
 	end
@@ -567,7 +568,12 @@ private
 		log(Logger::INFO, 'Cleanup for ' + @name.to_s)
 		File.unlink(cookies) if File.exists?(cookies)
 	end
+
 public
+	def log(severity, msg)
+		@owner.log(severity, msg)
+	end
+
 	def run
 		cleanup if @owner.opts.options.relogin
 		return unless @valid && @enabled
@@ -588,7 +594,7 @@ class TrackersList < ::Array
 		@opts = opts
 		FileUtils.mkdir_p(@opts.options.config_dir)
 		file = @opts.options.config
-		@valid, @logins = Tracker.read_config_file(file)
+		@valid, @logins = Tracker.read_config_file(file, self, 'Reading config file %s')
 		unless @valid
 			if @valid.nil?
 				log(Logger::ERROR, "Config #{file} is absent")
