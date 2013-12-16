@@ -522,11 +522,11 @@ private
 	end
 
 	def convert_line(line)
-		if @owner.ruby18
+		if line.respond_to?('encode!')
+			line.encode!('UTF-8', @charset)
+		else
 			# Iconv must already be loaded in check_login
 			line = Iconv.iconv('UTF-8', @charset, line)[0]
-		else
-			line.encode!('UTF-8', @charset)
 		end
 	end
 
@@ -534,7 +534,7 @@ private
 		r = true
 		success_re = login_method[:success_re] if login_method
 		# iconv is deprecated in Ruby 1.9.x
-		require 'iconv' if (@charset = scanhtml4charset) && @owner.ruby18
+		require 'iconv' if (@charset = scanhtml4charset) && ! String.new.respond_to?('encode!')
 		r = File.size(temp_html) == 0 if File.exists?(temp_html)
 		File.open(temp_html, 'r') do |f|
 			while line = f.gets
@@ -580,11 +580,10 @@ public
 end
 
 class TrackersList < ::Array
-	attr_reader :opts, :logins, :ruby18
+	attr_reader :opts, :logins
 
 	def initialize(owner, opts)
 		super()
-		@ruby18 = RUBY_VERSION =~ /^1\.8/
 		@owner = owner
 		@opts = opts
 		FileUtils.mkdir_p(@opts.options.config_dir)
