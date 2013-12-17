@@ -282,7 +282,7 @@ class Tracker
 	def login_method
 		# use caching
 		return @login_method if @login_method
-		if @hash[:login].kind_of?(Symbol)
+		if @hash[:login].kind_of?(::Symbol)
 			log(Logger::DEBUG, 'Using ' + @hash[:login].to_s + ' login details')
 			@login_method = @owner.find_tracker(@hash[:login]).login_method
 		else
@@ -293,7 +293,7 @@ class Tracker
 
 private
 	def name_with_subst
-		if @hash[:login].kind_of?(Symbol)
+		if @hash[:login].kind_of?(::Symbol)
 			return @hash[:login]
 		else
 			return @name
