@@ -1,0 +1,22 @@
+{
+	:"tfile.me" => {
+		:enabled => 1,
+		:login => {
+			# login page URL
+			:form => 'http://tfile.me/login/',
+			# loging fields
+			:fields => {
+				# symbols are taken from user config variables
+				# other values are set as is
+				:user => :username,
+				:password => :password,
+				# `login` field is mandatory!
+				:login => ''
+			},
+			:success_re => /type="password"/
+		},
+		:torrent => {
+			:match_re => /http:\/\/tfile.me\/forum\/download\.php\?id=\d+/,
+		}
+	}
+}
