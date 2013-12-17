@@ -196,7 +196,8 @@ class Tracker
     @hash = @hash[@name]
     # enabled if enabled both in config and in plugin
     @enabled = self.class.test_enabled(@hash[:enabled])
-    @enabled &&= self.class.test_enabled(logins[:enabled]) if logins
+    # disable if user config for tracker is absent
+    @enabled &&= logins ? self.class.test_enabled(logins[:enabled]) : false
     @login_method = nil
     log(Logger::DEBUG, 'Tracker: %s; Enabled: %s' % [@name, @enabled.to_s.upcase])
   end
@@ -258,7 +259,10 @@ class Tracker
           config[tracker][:enabled] = true
         elsif !tracker
           next
-        elsif m = /^(http:\/\/\S+)(\s+.+)?$/i.match(line)
+        # tracker topic URL must start with "http://"
+        # or equal to ":any" (for those trackers which have fixed URL)
+        elsif m = /^(http:\/\/\S+)(\s+.+)?$/i.match(line) \
+            || m = /^(:url)$/.match(line)
           torrent = m[1]
           if re = m[2]
             # strip whitespaces around
@@ -276,7 +280,12 @@ class Tracker
       end
     end
     config.each do |tracker, conf|
-      conf[:enabled] = eval(conf[:enabled])
+      conf[:enabled] = eval(conf[:enabled]) if conf[:enabled].kind_of?(String)
+      # disable tracker if no URLs set to track
+      # to avoid redundant fetches
+      if conf[:torrents].size == 0
+        conf[:enabled] = false
+      end
     end
     return true, config
   end
@@ -307,7 +316,8 @@ private
     return nil unless @owner.logins[name]
     r = @owner.logins[name].dup
     # use own avalability but referenced
-    r[:enabled] = @owner.logins[@name][:enabled]
+    # and disable if absent in user config
+    r[:enabled] = @owner.logins[@name] ? @owner.logins[@name][:enabled] : false
     return r
   end
 
