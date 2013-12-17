@@ -199,6 +199,7 @@ class Tracker
     # disable if user config for tracker is absent
     @enabled &&= logins ? self.class.test_enabled(logins[:enabled]) : false
     @login_method = nil
+    test_config
     log(Logger::DEBUG, 'Tracker: %s; Enabled: %s' % [@name, @enabled.to_s.upcase])
   end
 
@@ -303,6 +304,15 @@ class Tracker
   end
 
 private
+  def test_config
+    raise '%s: No :torrect section!' % @name unless @hash[:torrent]
+    raise '%s: :match_re must be a Regexp!' % @name unless @hash[:torrent][:match_re].kind_of?(Regexp)
+    mi = @hash[:torrent][:match_index]
+    unless mi.nil? || mi.kind_of?(Integer) || (mi.kind_of?(Array) && mi.size == 2)
+      raise '%s: :match_index must be an integer or an array of two integers!' % @name
+    end
+  end
+
   def name_with_subst
     if @hash[:login].kind_of?(::Symbol)
       return @hash[:login]
