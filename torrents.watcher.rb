@@ -216,7 +216,8 @@ class Tracker
     owner.log(Logger::DEBUG, 'v1: ' + message % file)
     @valid, @config = self.do_read_config_file_v1(file)
     # if file exists but not valid Ruby config
-    if @valid === false
+    # but tracker description is Ruby code only
+    if @valid === false && !owner.kind_of?(Tracker)
       owner.log(Logger::DEBUG, 'v2: ' + message % file)
       @valid, @config = self.do_read_config_file_v2(file)
     end
