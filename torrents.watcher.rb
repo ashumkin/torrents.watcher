@@ -402,8 +402,10 @@ private
 
 	def do_scan_torrent(url, regexp)
 		match_re = @hash[:torrent][:match_re]
-		mi = match_index = @hash[:torrent][:match_index].dup
-		match_index ||= 0
+		mi = match_index = @hash[:torrent][:match_index] || 0
+		if mi.kind_of?(Array)
+			mi = match_index = mi.dup
+		end
 		if mi.kind_of?(Array)
 			match_index = mi.shift
 		else
