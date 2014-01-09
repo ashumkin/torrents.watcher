@@ -475,6 +475,18 @@ private
     return false
   end
 
+  def do_fetch_link(link, name, post)
+    log(Logger::INFO, "Fetching: #{name}")
+    params = ['--content-disposition', '-N']
+    params << '--post-data ""' if post
+    run_wget(link, params)
+    filename = get_downloaded_filename
+    if filename && file_is_torrent(temp_html)
+      log(Logger::DEBUG, "Moving #{temp_html} -> #{filename}")
+      FileUtils.mv(temp_html, filename)
+    end
+  end
+
   def fetch_urls
     post = @hash[:torrent][:post]
     torrents = @hash[:torrent][:url]
@@ -482,7 +494,6 @@ private
     torrents = [torrents] if torrents.kind_of?(String)
     torrents = @owner.logins[@name][:torrents] if torrents == :config
     torrents = [torrents] if torrents.kind_of?(Hash)
-    params = ['--content-disposition', '-N']
     if torrents.kind_of?(Array)
       ts = {}
       torrents.each do |t|
@@ -502,20 +513,13 @@ private
       end
       log_separator(nil, '<')
     end
-    params << '--post-data ""' if post
     ChDir.new(tmp) do
-      log_separator('FETCHING: BEGIN')
+      log_separator('PROCESSING: BEGIN')
       links.each do |link, name|
-        log_separator("FETCHING: #{link}")
-        log(Logger::INFO, "Fetching: #{name}")
-        run_wget(link, params)
-        filename = get_downloaded_filename
-        if filename && file_is_torrent(temp_html)
-          log(Logger::DEBUG, "Moving #{temp_html} -> #{filename}")
-          FileUtils.mv(temp_html, filename)
-        end
+        log_separator("PROCESSING: #{link}")
+        do_fetch_link(link, name, post)
       end
-      log_separator('FETCHING: END')
+      log_separator('PROCESSING: END')
     end
   end
 
