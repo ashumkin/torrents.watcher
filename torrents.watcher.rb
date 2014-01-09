@@ -413,7 +413,7 @@ private
     else
       mi = [mi]
     end
-    a = {}
+    links = {}
     File.open(temp_html) do |f|
       log(Logger::DEBUG, 'Scanning file %s for %s' % [temp_html, match_re])
       while line = f.gets
@@ -436,12 +436,12 @@ private
             else
               name = mi.map { |i| m[i] }
             end
-            a[link] = name
+            links[link] = name
           end
         end
       end
     end
-    return a
+    return links
   end
 
   def scan_torrent(url, regexp)
@@ -482,7 +482,6 @@ private
     torrents = [torrents] if torrents.kind_of?(String)
     torrents = @owner.logins[@name][:torrents] if torrents == :config
     torrents = [torrents] if torrents.kind_of?(Hash)
-    links = {}
     params = ['--content-disposition', '-N']
     if torrents.kind_of?(Array)
       ts = {}
@@ -495,6 +494,7 @@ private
       end
       torrents = ts
     end
+    links = {}
     torrents.each do |t, re|
       log_separator(t)
       if run_wget(t)
