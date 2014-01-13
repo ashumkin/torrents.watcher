@@ -266,11 +266,17 @@ class Tracker
             || m = /^(:url)$/.match(line)
           torrent = m[1]
           if re = m[2]
-            # strip whitespaces around
             re.strip!
-            # and extract <regexp> from /<regexp>/
+            mailto = nil
+            # if we want to notify by mail only
+            if m = /mailto:(.+)/i.match(re)
+              # regexp must be before "mailto:" string
+              re = $`.strip
+              mailto = m[1].strip
+            end
+            # extract <regexp> from /<regexp>/
             re.gsub!(/^\/|\/$/, '')
-            torrent = { torrent => Regexp.new(re) }
+            torrent = { torrent => { :regexp => Regexp.new(re), :mailto => mailto } }
           end
           config[tracker][:torrents] << torrent
         elsif m = /^(\w+)\s+(.+)$/.match(line)
@@ -422,7 +428,8 @@ private
     return { url.gsub(match_re, replace) => url }
   end
 
-  def do_scan_torrent(url, regexp)
+  def do_scan_torrent(url, config)
+    config = [config] unless config.kind_of?(Array)
     match_re = @hash[:torrent][:match_re]
     mi = match_index = @hash[:torrent][:match_index] || 0
     if mi.kind_of?(Array)
@@ -441,22 +448,26 @@ private
         if m = match_re.match(line)
           link = m[match_index]
           log(Logger::DEBUG, "Found #{link} (#{m[0]})")
-          if regexp.kind_of?(TrueClass)
-            matched = re = true
-          else
-            re = regexp
-            matched = re.match(line)
-          end
-          unless matched
-            log(Logger::DEBUG, 'But not matched to ' + re.to_s)
-          else
-            log(Logger::DEBUG, 'Matched to ' + re.to_s)
-            if mi.size == 1
-              name = m[mi[0]]
+          config.each do |conf|
+            if conf.kind_of?(TrueClass)
+              matched = re = true
+              mailto = nil
             else
-              name = mi.map { |i| m[i] }
+              re = conf[:regexp]
+              mailto = conf[:mailto]
+              matched = re.match(line)
             end
-            links[link] = name
+            unless matched
+              log(Logger::DEBUG, 'But not matched to ' + re.to_s)
+            else
+              log(Logger::DEBUG, 'Matched to ' + re.to_s)
+              if mi.size == 1
+                name = m[mi[0]]
+              else
+                name = mi.map { |i| m[i] }
+              end
+              links[link] = { :name => name, :mailto => mailto , :url => url }
+            end
           end
         end
       end
@@ -464,12 +475,12 @@ private
     return links
   end
 
-  def scan_torrent(url, regexp)
+  def scan_torrent(url, conf)
     return unless @hash[:torrent]
     if @hash[:torrent][:replace_url]
       return do_replace_torrent(url)
     else
-      return do_scan_torrent(url, regexp)
+      return do_scan_torrent(url, conf)
     end
   end
 
@@ -495,7 +506,8 @@ private
     return false
   end
 
-  def do_fetch_link(link, name, post)
+  def do_fetch_link(link, config, post)
+    name = config[:name]
     log(Logger::INFO, "Fetching: #{name}")
     params = ['--content-disposition', '-N']
     params << '--post-data ""' if post
@@ -504,6 +516,37 @@ private
     if filename && file_is_torrent(temp_html)
       log(Logger::DEBUG, "Moving #{temp_html} -> #{filename}")
       FileUtils.mv(temp_html, filename)
+    end
+  end
+
+  def notify(link, config)
+    name = config[:name]
+    mailto = config[:mailto]
+    url = config[:url]
+    # extract params
+    mailto, params = mailto.split('?', 2)
+    params = params.split('|')
+    tmp_file = "#{tmp}/#{name}.notify"
+    if File.exists?(tmp_file)
+      log(Logger::DEBUG, "Notification file for #{name} already exists. Skipping.")
+      return
+    end
+    log(Logger::INFO, "Notifying for #{name}")
+    File.open(tmp_file, 'w') do |f|
+      f.puts(params)
+      f.puts <<EOT
+To: #{mailto}
+
+Notification mail for #{name}.
+URL: #{url}.
+Link: #{link}.
+EOT
+    end
+    s = 'Dry run. ' if @owner.opts.options.dry_run
+    cmd = '%scat "%s" | msmtp -t "%s"' % [s, tmp_file, mailto]
+    log(Logger::DEBUG, cmd)
+    unless @owner.opts.options.dry_run
+      system(cmd)
     end
   end
 
@@ -518,7 +561,15 @@ private
       ts = {}
       torrents.each do |t|
         if t.kind_of?(Hash)
-          ts.merge!(t)
+          t.each do |k ,v|
+            # if such values already set,
+            # make an array and append new value to it
+            if a = ts[k]
+              a = [a] unless a.kind_of?(Array)
+              v = a + [v]
+            end
+            ts[k] = v
+          end
         else
           ts[t] = true
         end
@@ -526,18 +577,23 @@ private
       torrents = ts
     end
     links = {}
-    torrents.each do |t, re|
+    torrents.each do |t, conf|
       log_separator(t)
       if run_wget(t)
-        links.merge!(scan_torrent(t, re))
+        links.merge!(scan_torrent(t, conf))
       end
       log_separator(nil, '<')
     end
     ChDir.new(tmp) do
       log_separator('PROCESSING: BEGIN')
-      links.each do |link, name|
+      links.each do |link, config|
+        mailto = config[:mailto]
         log_separator("PROCESSING: #{link}")
-        do_fetch_link(link, name, post)
+        if mailto
+          notify(link, config)
+        else
+          do_fetch_link(link, config, post)
+        end
       end
       log_separator('PROCESSING: END')
     end
@@ -778,7 +834,7 @@ private
 
   def cleanup
     log_separator('CLEANUP: BEGIN')
-    Dir["#{@opts.cache}/*.torrent"].sort.each do |t|
+    Dir["#{@opts.cache}/*.torrent", "#{@opts.cache}/*.notify"].sort.each do |t|
       s = 'Dry run. ' if @opts.options.dry_run
       log(Logger::INFO, "#{s.to_s}Removing #{t}")
       unless @opts.options.dry_run
