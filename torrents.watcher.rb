@@ -393,7 +393,7 @@ private
     return check_login
   end
 
-  def do_replace_torrent(url, regexp)
+  def do_replace_torrent(url)
     match_re = @hash[:torrent][:match_re]
     replace = @hash[:torrent][:replace]
     # return hash to use source link as a referer
@@ -440,7 +440,7 @@ private
   def scan_torrent(url, regexp)
     return unless @hash[:torrent]
     if @hash[:torrent][:replace_url]
-      return do_replace_torrent(url, regexp)
+      return do_replace_torrent(url)
     else
       return do_scan_torrent(url, regexp)
     end
