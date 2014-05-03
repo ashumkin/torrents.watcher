@@ -517,7 +517,8 @@ private
     File.open(temp_html, 'r') do |f|
       while line = f.gets
         begin
-          if m = /content=('|")text\/html;\s*charset=(\S+)\1/i.match(line)
+          if m = /content=('|")text\/html;\s*charset=(\S+)\1/i.match(line) \
+              || m = /meta charset=(")(\S+)\1/i.match(line)
             charset = m[2]
             return charset
           end
