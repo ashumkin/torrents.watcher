@@ -258,12 +258,13 @@ class Tracker
           config[tracker][:enabled] = true
         elsif !tracker
           next
-        elsif m = /^(http:\/\/\S+)(\s+(.+))?$/i.match(line)
+        elsif m = /^(http:\/\/\S+)(\s+.+)?$/i.match(line)
           torrent = m[1]
           if re = m[2]
             # strip whitespaces around
+            re.strip!
             # and extract <regexp> from /<regexp>/
-            re.strip!.gsub!(/^\/|\/$/, '')
+            re.gsub!(/^\/|\/$/, '')
             torrent = { torrent => Regexp.new(re) }
           end
           config[tracker][:torrents] << torrent
