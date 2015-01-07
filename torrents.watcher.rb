@@ -320,16 +320,16 @@ private
     end
   end
 
-  def name_with_subst
+  def name_with_subst(name)
     if @hash[:login].kind_of?(::Symbol)
       return @hash[:login]
     else
-      return @name
+      return name
     end
   end
 
   def logins
-    name = name_with_subst
+    name = name_with_subst(@name)
     return nil unless @owner.logins[name]
     r = @owner.logins[name].dup
     # use own avalability but referenced
@@ -344,8 +344,8 @@ private
     return dir
   end
 
-  def cookies
-    name = name_with_subst
+  def cookies(name)
+    name = name_with_subst(name)
     return "#{tmp}/#{name}.cookies"
   end
 
@@ -357,21 +357,21 @@ private
     return login_method[:form]
   end
 
-  def temp_html
-    return "#{tmp}/#{@name}.html"
+  def temp_html(name)
+    return "#{tmp}/#{name}.html"
   end
 
-  def headers
-    return "#{tmp}/#{@name}.headers"
+  def headers(name)
+    return "#{tmp}/#{name}.headers"
   end
 
-  def wget_options
+  def wget_options(name)
     opts = ['-q']
     opts << '--convert-links'
     opts << '--keep-session-cookies'
-    opts << "--save-cookies #{cookies}"
-    opts << "--load-cookies #{cookies}"
-    opts << ['--server-response', "--output-file #{headers}"]
+    opts << "--save-cookies #{cookies(name)}"
+    opts << "--load-cookies #{cookies(name)}"
+    opts << ['--server-response', "--output-file #{headers(name)}"]
     opts.join(' ')
   end
 
@@ -397,8 +397,8 @@ private
   end
 
   def run_wget(url, data = '', tofile = true)
-    file = "-O #{temp_html}" if tofile
-    cmd = "wget #{file.to_s} #{wget_options} #{url}"
+    file = "-O #{temp_html(@name)}" if tofile
+    cmd = "wget #{file.to_s} #{wget_options(@name)} #{url}"
     data = data.join(' ') if data.kind_of?(Array)
     cmd << ' ' << data.to_s
     log(Logger::DEBUG, cmd)
@@ -442,8 +442,8 @@ private
       mi = [mi]
     end
     links = {}
-    File.open(temp_html) do |f|
-      log(Logger::DEBUG, 'Scanning file %s for %s' % [temp_html, match_re])
+    File.open(temp_html(@name)) do |f|
+      log(Logger::DEBUG, 'Scanning file %s for %s' % [temp_html(@name), match_re])
       while line = f.gets
         line = convert_line(line) if @charset
         if m = match_re.match(line)
@@ -485,8 +485,8 @@ private
     end
   end
 
-  def get_downloaded_filename
-    File.open(headers, 'r') do |f|
+  def get_downloaded_filename(file)
+    File.open(file, 'r') do |f|
       while line = f.gets
         if m = /Content-Disposition: attachment; filename="(.+)"/i.match(line)
           f = m[1].gsub(/\\([0-8]{3})/) { [$1.to_i(8)].pack('C')}
@@ -509,14 +509,16 @@ private
 
   def do_fetch_link(link, config, post)
     name = config[:name]
+    log_separator("PROCESSING: #{link}")
     log(Logger::INFO, "Fetching: #{name}")
     params = ['--content-disposition', '-N']
     params << '--post-data ""' if post
     run_wget(link, params)
-    filename = get_downloaded_filename
-    if filename && file_is_torrent(temp_html)
-      log(Logger::DEBUG, "Moving #{temp_html} -> #{filename}")
-      FileUtils.mv(temp_html, filename)
+    filename = get_downloaded_filename(headers(name))
+    t_html = temp_html(name)
+    if filename && file_is_torrent(t_html)
+      log(Logger::DEBUG, "Moving #{t_html} -> #{filename}")
+      FileUtils.mv(t_html, filename)
     end
   end
 
@@ -578,30 +580,40 @@ EOT
       torrents = ts
     end
     links = {}
+    threads = []
     torrents.each do |t, conf|
-      log_separator(t)
-      if run_wget(t)
-        links.merge!(scan_torrent(t, conf))
+      threads << Thread.new(t, conf) do |tor, conf|
+        log_separator(tor)
+        if run_wget(tor)
+          links.merge!(scan_torrent(tor, conf))
       end
       log_separator(nil, '<')
     end
+    end
+    threads.each {|th| th.join }
+    require 'pp'
+    pp links
     ChDir.new(tmp) do
       log_separator('PROCESSING: BEGIN')
+      threads = []
       links.each do |link, config|
         mailto = config[:mailto]
         log_separator("PROCESSING: #{link}")
         if mailto
           notify(link, config)
         else
-          do_fetch_link(link, config, post)
+          threads << Thread.new(link, name, config) do |l, n, c|
+            do_fetch_link(l, n, c)
+          end
         end
       end
+      threads.each {|th| th.join }
       log_separator('PROCESSING: END')
     end
   end
 
-  def scanhtml4charset
-    File.open(temp_html, 'r') do |f|
+  def scanhtml4charset(t_html)
+    File.open(t_html, 'r') do |f|
       while line = f.gets
         begin
           if m = /content=('|")text\/html;\s*charset=(\S+)\1/i.match(line) \
@@ -630,9 +642,10 @@ EOT
     r = true
     success_re = login_method[:success_re] if login_method
     # iconv is deprecated in Ruby 1.9.x
-    require 'iconv' if (@charset = scanhtml4charset) && ! String.new.respond_to?('encode!')
-    r = File.size(temp_html) == 0 if File.exists?(temp_html)
-    File.open(temp_html, 'r') do |f|
+    t_html = temp_html(@name)
+    require 'iconv' if (@charset = scanhtml4charset(t_html)) && ! String.new.respond_to?('encode!')
+    r = File.size(t_html) == 0 if File.exists?(t_html)
+    File.open(t_html, 'r') do |f|
       while line = f.gets
         line = convert_line(line) if @charset
         if success_re.match(line)
@@ -657,6 +670,7 @@ EOT
 
   def cleanup
     log(Logger::INFO, 'Cleanup for ' + @name.to_s)
+    cookies = cookies(@name)
     File.unlink(cookies) if File.exists?(cookies)
   end
 
