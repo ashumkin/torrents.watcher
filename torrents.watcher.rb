@@ -421,17 +421,22 @@ private
         if m = match_re.match(line)
           link = m[match_index]
           log(Logger::DEBUG, "Found #{link} (#{m[0]})")
-          if regexp.kind_of?(TrueClass) \
-              || regexp.match(line)
-            log(Logger::DEBUG, 'Matched to ' + regexp.to_s)
+          if regexp.kind_of?(TrueClass)
+            matched = re = true
+          else
+            re = regexp
+            matched = re.match(line)
+          end
+          unless matched
+            log(Logger::DEBUG, 'But not matched to ' + re.to_s)
+          else
+            log(Logger::DEBUG, 'Matched to ' + re.to_s)
             if mi.size == 1
               name = m[mi[0]]
             else
               name = mi.map { |i| m[i] }
             end
             a[link] = name
-          else
-            log(Logger::DEBUG, 'But not matched to ' + regexp.to_s)
           end
         end
       end
