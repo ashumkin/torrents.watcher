@@ -261,7 +261,7 @@ class Tracker
         elsif !tracker
           next
         # tracker topic URL must start with "http://"
-        # or equal to ":any" (for those trackers which have fixed URL)
+        # or equal to ":url" (for those trackers which have fixed URL)
         elsif m = /^(http:\/\/\S+)(\s+.+)?$/i.match(line) \
             || m = /^(:url)$/.match(line)
           torrent = m[1]
