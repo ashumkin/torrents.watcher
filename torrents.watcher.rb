@@ -845,9 +845,15 @@ private
   end
 
   def file_exists?(filename)
-    ['.loaded', '.added'].each do |ext|
+    ['.loaded', '.added', ''].each do |ext|
+      # .loaded, .added extensions are for those transmission servers
+      # that add such extensions for already loaded torrent files
       file = filename + ext
-      return true, file if File.exists?(file)
+      if File.exists?(file)
+        return true, file
+      else
+        log(Logger::DEBUG, "File #{file} DOES NOT exist")
+      end
     end
     return false, filename
   end
@@ -865,14 +871,14 @@ private
       exists, file_e = file_exists?(file)
       if exists
         log(Logger::DEBUG, "File #{file_e} exists")
-        exists = File.size(file_e) == File.size(t)
+        f_size_source = File.size(t)
+        f_size_dest = File.size(file_e)
+        exists = f_size_source == f_size_dest
         if exists
-          log(Logger::DEBUG, 'And size matches')
+          log(Logger::DEBUG, "And size (#{f_size_source}) matches")
         else
-          log(Logger::DEBUG, 'But size does not match')
+          log(Logger::DEBUG, "But size (#{f_size_dest}) does not match (#{f_size_source})")
         end
-      else
-        log(Logger::DEBUG, "File #{file} DOES NOT exist")
       end
       unless exists
         s = 'Dry run. ' if @opts.options.dry_run
