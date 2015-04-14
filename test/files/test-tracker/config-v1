@@ -1,0 +1,20 @@
+# vim: set shiftwidth=2 tabstop=2 expandtab filetype=ruby:
+{
+  :"test-tracker-1" => {
+    :enabled => 1,
+    :login => 'tracker-1-login',
+    :password => 'tracker-1-password',
+    :torrents => {
+      'http://www.kinokopilka.tv/movies/11609-podozrevaemye' => /Season 02 /,
+      'http://www.kinokopilka.tv/movies/3747-pravosudie-dekstera' => /Season 08 /
+    }
+  },
+  :"test-tracker-2" => {
+    :enabled => 0,
+    :login => 'tracker-2-login',
+    :password => 'tracker-2-password',
+    :torrents => {
+      'http://www.kinokopilka.tv/movies/3747-pravosudie-dekstera' => /Season 07 /
+    }
+  }
+}

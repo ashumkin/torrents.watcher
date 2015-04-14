@@ -181,7 +181,7 @@ private
 end
 
 class Tracker
-  attr_reader :name
+  attr_reader :name, :valid, :enabled
 
   def initialize(owner, config)
     @owner = owner
@@ -189,6 +189,7 @@ class Tracker
     @valid, @hash = self.class.read_config_file(config, self, 'Reading tracker description file %s')
     unless @valid
       log(Logger::WARN, "WARNING! File #{config} is not a valid tracker description!")
+      @enabled = false
       return
     end
     @name = @hash.keys[0]
@@ -900,3 +901,4 @@ if __FILE__ == $0
   watcher = TorrentsWatcher::TWatcher.new(cmdLine)
   watcher.run
 end
+
