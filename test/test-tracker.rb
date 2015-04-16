@@ -9,7 +9,7 @@ module TorrentsWatcher
 
 class TestTracker < Test::Unit::TestCase
   TESTED_FOLDER = File.expand_path('../files/test-tracker/', __FILE__)
-  TESTED_CONFIG = File.expand_path('../files/test-tracker/config-v', __FILE__)
+  TESTED_CONFIG = TESTED_FOLDER + '/config-v'
 
   def setup
     @tracker = Tracker.new(TestTrackerOwner.new, TESTED_FOLDER + '/test-1.tracker')
