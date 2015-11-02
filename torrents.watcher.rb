@@ -499,7 +499,7 @@ private
 
   def file_is_torrent(filename)
     File.open(filename, 'r') do |f|
-      if (f.read(11) == 'd8:announce')
+      if (f.read(15) =~ /^d\d+:announce/)
         return true
       end
     end
