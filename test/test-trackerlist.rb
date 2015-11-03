@@ -2,25 +2,26 @@
 # vim: set shiftwidth=2 tabstop=2 expandtab:
 
 require 'test/unit'
-require File.expand_path('../../torrents.watcher.rb', __FILE__)
+require File.expand_path('../../lib/options.rb', __FILE__)
+require File.expand_path('../../lib/trackerlist.rb', __FILE__)
 require File.expand_path('../helpers/mocks/tracker-owner.rb', __FILE__)
 
 module TorrentsWatcher
 
-class TestTrackersList < Test::Unit::TestCase
+class TestTrackerList < Test::Unit::TestCase
   TESTED_FOLDER = File.expand_path('../files/test-trackerslist/', __FILE__)
   TESTED_CONFIG = File.expand_path('../files/test-trackerslist/.config', __FILE__)
   def setup
     args = []
     args << '--dry-run'
     args << '--config' << TESTED_CONFIG
-    @opts = TCmdLineOptions.new(args)
+    @opts = CmdLineOptions.new(args)
     @opts.options.plugins = TESTED_FOLDER
     assert_equal TESTED_CONFIG, @opts.options.config
   end
 
   def test_count
-    list = TrackersList.new(TestTrackerOwner.new, @opts)
+    list = TrackerList.new(TestTrackerOwner.new, @opts)
     assert_equal 2, list.count
     return list
   end

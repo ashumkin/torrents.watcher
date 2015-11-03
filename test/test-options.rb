@@ -2,15 +2,15 @@
 # vim: set shiftwidth=2 tabstop=2 expandtab:
 
 require 'test/unit'
-require File.expand_path('../../torrents.watcher.rb', __FILE__)
+require File.expand_path('../../lib/options.rb', __FILE__)
 
 module TorrentsWatcher
 
-class TestTOptions < Test::Unit::TestCase
+class TestOptions < Test::Unit::TestCase
   TESTED_FOLDER = File.expand_path('../files/test-options', __FILE__)
 
   def setup
-    @options = TOptions.new
+    @options = Options.new
     @options.plugins_mask = '*.tracker'
   end
 

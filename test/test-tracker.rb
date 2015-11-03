@@ -2,7 +2,7 @@
 # vim: set shiftwidth=2 tabstop=2 expandtab:
 
 require 'test/unit'
-require File.expand_path('../../torrents.watcher.rb', __FILE__)
+require File.expand_path('../../lib/tracker.rb', __FILE__)
 require File.expand_path('../helpers/mocks/tracker-owner.rb', __FILE__)
 
 module TorrentsWatcher
