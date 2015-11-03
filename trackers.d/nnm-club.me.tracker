@@ -1,24 +1,19 @@
-{
-	:"nnm-club.me" => {
-		:enabled => 1,
-		:login => {
-			# check already logged in page URL the same as login page
-			# :check => 'http://nnm-club.me/forum/login.php',
-			# login page URL
-			:form => 'http://nnm-club.me/forum/login.php',
-			# loging fields
-			:fields => {
-				# symbols are taken from user config variables
-				# other values are set as is
-				:username => :username,
-				:password => :password,
-				# кнопка "Вход" - обязательное поле(sic!)
-				:login => '%C2%F5%EE%E4'
-			},
-			:success_re => /input type="submit" name="login"/
-		},
-		:torrent => {
-			:match_re => /http:\/\/nnm-club\.me\/forum\/download\.php\?id=\d+/,
-		}
-	}
-}
+# vim: set filetype=yaml expandtab tabstop=4 shiftwidth=4:
+:nnm-club.me:
+    :enabled: 1
+    :login:
+        # check already logged in page URL the same as login page
+        # :check => 'http://nnm-club.me/forum/login.php',
+        # login page URL
+        :form: http://nnm-club.me/forum/login.php
+        # loging fields
+        :fields:
+            # symbols are taken from user config variables
+            # other values are set as is
+            :username: :username
+            :password: :password
+            # кнопка "Вход" - обязательное поле(sic!)
+            :login: '%C2%F5%EE%E4'
+        :success_re: input type="submit" name="login"
+    :torrent:
+        :match_re: http://nnm-club\.me/forum/download\.php\?id=\d+

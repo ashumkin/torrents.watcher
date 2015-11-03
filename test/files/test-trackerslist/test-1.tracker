@@ -1,25 +1,19 @@
-# vim: set shiftwidth=2 tabstop=2 expandtab filetype=ruby:
-{
-  :"test-tracker-1" => {
-    :enabled => 1,
-    :login => {
+# vim: set shiftwidth=4 tabstop=4 expandtab filetype=yaml:
+:test-tracker-1:
+  :enabled: 1
+  :login:
       # check already logged in page URL
-      :check => 'http://www.kinokopilka.tv/login',
+      :check: http://www.kinokopilka.tv/login
       # login page URL
-      :form => 'http://www.kinokopilka.tv/user_sessions',
+      :form: http://www.kinokopilka.tv/user_sessions
       # loging fields
-      :fields => {
-        # symbols are taken from user config variables
-        # other values are set as is
-        :user => :login,
-        :password => :password,
-        :remember_me => 1
-      },
-      :success_re => /password/
-    },
-    :torrent => {
-      :match_re => /<a href="(\S*\/x\/[a-zA-Z0-9=+]+--[0-9a-f]+)"[^>]*>(.*?&quot;(.+?)&quot;).*?<\/a>/,
-      :match_index => [1, 3]
-    }
-  }
-}
+      :fields:
+          # symbols are taken from user config variables
+          # other values are set as is
+          :user: :login
+          :password: :password
+          :remember_me: 1
+  :success_re: password
+  :torrent:
+      :match_re: <a href="(\S*/x/[a-zA-Z0-9=+]+--[0-9a-f]+)"[^>]*>(.*?&quot;(.+?)&quot;).*?</a>
+      :match_index: [1, 3]

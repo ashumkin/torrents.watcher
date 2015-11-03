@@ -11,6 +11,7 @@ module TorrentsWatcher
 class TestTrackerPredefined < Test::Unit::TestCase
   def setup
     args = ['--dry-run']
+    args << '--debug' if Rake.application.options.trace
     @opts = CmdLineOptions.new(args)
   end
 

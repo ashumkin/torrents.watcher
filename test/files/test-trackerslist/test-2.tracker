@@ -1,12 +1,8 @@
-# vim: set shiftwidth=2 tabstop=2 expandtab filetype=ruby:
-{
-  :"test-tracker-2" => {
-    :enabled => 1,
-    :login => :"test-tracker-1",
-    :torrent => {
-      :url => 'http://www.kinokopilka.tv/xbt_files/bookmarked',
-      :match_re => /<a href="(\S*\/x\/[a-zA-Z0-9=+]+--[0-9a-f]+)"[^>]*>(.*?&quot;(.+?)&quot;).*?<\/a>/,
-      :match_index => [1, 3]
-    }
-  }
-}
+# vim: set shiftwidth=4 tabstop=4 expandtab filetype=yaml:
+:test-tracker-2:
+    :enabled: 1
+    :login: :test-tracker-1
+    :torrent:
+        :url: http://www.kinokopilka.tv/xbt_files/bookmarked
+        :match_re: <a href="(\S*/x/[a-zA-Z0-9=+]+--[0-9a-f]+)"[^>]*>(.*?&quot;(.+?)&quot;).*?</a>
+        :match_index: [1, 3]

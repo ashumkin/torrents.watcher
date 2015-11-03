@@ -1,11 +1,8 @@
-{
-	:"kinokopilka.tv.rss" => {
-		:enabled => 1,
-		:login => :"kinokopilka.tv",
-		:torrent => {
-			:url => :config,
-			:match_re => /<link>(\S*\/xbt_files\/\d+\.torrent\?.+)<\/link>/,
-			:match_index => 1
-		}
-	}
-}
+# vim: set filetype=yaml expandtab tabstop=4 shiftwidth=4:
+:kinokopilka.tv.rss:
+    :enabled: 1
+    :login: :kinokopilka.tv
+    :torrent:
+        :url: :config
+        :match_re: <link>(\S*/xbt_files/\d+\.torrent\?.+)</link>
+        :match_index: 1

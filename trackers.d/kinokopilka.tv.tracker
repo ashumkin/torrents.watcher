@@ -1,24 +1,19 @@
-{
-	:"kinokopilka.tv" => {
-		:enabled => 1,
-		:login => {
-			# check already logged in page URL
-			:check => 'http://www.kinokopilka.tv/login',
-			# login page URL
-			:form => 'http://www.kinokopilka.tv/user_sessions',
-			# loging fields
-			:fields => {
-				# symbols are taken from user config variables
-				# other values are set as is
-				:user => :login,
-				:password => :password,
-				:remember_me => 1
-			},
-			:success_re => /password/
-		},
-		:torrent => {
-			:match_re => /<a[^<>]+href="(\S*\/x\/[a-zA-Z0-9_=+]+--[0-9a-f]+)"[^>]*>(.*?&quot;(.+?)&quot;).*?<\/a>/,
-			:match_index => [1, 3]
-		}
-	}
-}
+# vim: set filetype=yaml expandtab tabstop=4 shiftwidth=4:
+:kinokopilka.tv:
+    :enabled: 1
+    :login:
+        # check already logged in page URL
+        :check: http://www.kinokopilka.tv/login
+        # login page URL
+        :form: http://www.kinokopilka.tv/user_sessions
+        # loging fields
+        :fields:
+            # symbols are taken from user config variables
+            # other values are set as is
+            :user: :login
+            :password: :password
+            :remember_me: 1
+        :success_re: password
+    :torrent:
+        :match_re: <a[^<>]+href="(\S*/x/[a-zA-Z0-9_=+]+--[0-9a-f]+)"[^>]*>(.*?&quot;(.+?)&quot;).*?</a>
+        :match_index: [1, 3]

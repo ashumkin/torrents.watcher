@@ -43,34 +43,16 @@ class Tracker
   end
 
   def self.read_config_file(file, owner, message)
-    owner.log(Logger::DEBUG, 'v1: ' + message % file)
-    @valid, @config = self.do_read_config_file_v1(file)
-    # if file exists but not valid Ruby config
-    # but tracker description is Ruby code only
-    if @valid === false && !owner.kind_of?(Tracker)
+    return nil, {} unless File.exist?(file)
+    if owner.kind_of?(Tracker)
+      owner.log(Logger::DEBUG, 'v3: ' + message % file)
+      @valid, @config = self.do_read_config_file_v3(file)
+    else
       owner.log(Logger::DEBUG, 'v2: ' + message % file)
       @valid, @config = self.do_read_config_file_v2(file)
     end
     owner.log(Logger::DEBUG, 'File valid? ' + @valid.to_s.upcase)
     return @valid, @config
-  end
-
-  def self.do_read_config_file_v1(file)
-    content = ''
-    return nil, {} unless File.exists?(file)
-    File.open(file, 'r') do |f|
-      content = f.read
-    end
-    begin
-      conf = eval(content)
-    rescue SyntaxError => se
-      conf = []
-    end
-    if conf.kind_of?(Hash) && !conf.keys[0].nil?
-      return true, conf
-    else
-      return false, {}
-    end
   end
 
   def self.do_read_config_file_v2(file)
@@ -123,6 +105,31 @@ class Tracker
       end
     end
     return true, config
+  end
+
+  def self.normalize_config(config)
+    config.each do |k, v|
+      v[:torrent][:match_re] = Regexp.new(v[:torrent][:match_re])
+      if v[:login].kind_of?(Hash)
+        v[:login][:success_re] = Regexp.new(v[:login][:success_re]) if v[:login][:success_re]
+      end
+    end
+    return config
+  end
+
+  def self.do_read_config_file_v3(file)
+    require 'yaml'
+    config = nil
+    begin
+      config = YAML::load_file(file)
+    rescue
+    end
+    if config
+      config = normalize_config(config)
+      return config.keys.size > 0, config
+    else
+      return false, {}
+    end
   end
 
   def login_method
