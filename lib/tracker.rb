@@ -7,12 +7,13 @@ require File.expand_path('../chdir.rb', __FILE__)
 module TorrentsWatcher
 
 class Tracker
-  attr_reader :name, :valid, :enabled
+  attr_reader :file, :name, :valid, :enabled
 
   def initialize(owner, config)
     @owner = owner
+    @file = config
     @enabled = true
-    @valid, @hash = self.class.read_config_file(config, self, 'Reading tracker description file %s')
+    @valid, @hash = self.class.read_config_file(@file, self, 'Reading tracker description file %s')
     unless @valid
       log(Logger::WARN, "WARNING! File #{config} is not a valid tracker description!")
       @enabled = false
