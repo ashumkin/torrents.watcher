@@ -230,6 +230,31 @@ private
     return "\"#{data}\""
   end
 
+  def response_is_gzipped?(headers_file)
+    File.open(headers_file, 'r') do |f|
+      while line = f.gets do
+        if /Content-Encoding: gzip/i.match(line)
+          log(Logger::DEBUG, 'Content is gzipped')
+          return true
+        end
+      end
+    end
+    return false
+  end
+
+  def resave_gzipped_file(headers, file)
+    if response_is_gzipped?(headers)
+      require 'zlib'
+      content = nil
+      Zlib::GzipReader.open(file) do |f|
+        content = f.read
+      end
+      File.open(file, 'w') do |f|
+        f.write(content)
+      end
+    end
+  end
+
   def run_wget(url, data = '', tofile = true)
     file = "-O #{temp_html}" if tofile
     cmd = "wget #{file.to_s} #{wget_options} #{url}"
@@ -238,7 +263,11 @@ private
     log(Logger::DEBUG, cmd)
     system(cmd)
     r = $? == 0
-    log(Logger::ERROR, "Error wget execution") unless r
+    if r
+      resave_gzipped_file(headers, temp_html) if tofile
+    else
+      log(Logger::ERROR, "Error wget execution")
+    end
     return r
   end
 
