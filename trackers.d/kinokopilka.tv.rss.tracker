@@ -1,7 +1,7 @@
 # vim: set filetype=yaml expandtab tabstop=4 shiftwidth=4:
-:kinokopilka.tv.rss:
+:kinokopilka.pro.rss:
     :enabled: 1
-    :login: :kinokopilka.tv
+    :login: :kinokopilka.pro
     :torrent:
         :url: :config
         :match_re: <link>(\S*/xbt_files/\d+\.torrent\?.+)</link>

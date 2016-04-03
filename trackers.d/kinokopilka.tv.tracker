@@ -1,11 +1,11 @@
 # vim: set filetype=yaml expandtab tabstop=4 shiftwidth=4:
-:kinokopilka.tv:
+:kinokopilka.pro:
     :enabled: 1
     :login:
         # check already logged in page URL
-        :check: http://www.kinokopilka.tv/login
+        :check: https://www.kinokopilka.pro/login
         # login page URL
-        :form: http://www.kinokopilka.tv/user_sessions
+        :form: https://www.kinokopilka.pro/user_sessions
         # loging fields
         :fields:
             # symbols are taken from user config variables
