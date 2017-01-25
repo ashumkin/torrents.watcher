@@ -289,7 +289,7 @@ private
     match_re = @hash[:torrent][:match_re]
     replace = @hash[:torrent][:replace]
     # return hash to use source link as a referer
-    return { url.gsub(match_re, replace) => url }
+    return { url.gsub(match_re, replace) => { :name => url, :url => url } }
   end
 
   def do_scan_torrent(url, config)
