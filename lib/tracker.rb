@@ -2,7 +2,8 @@
 # vim: set tabstop=2 shiftwidth=2 expandtab :
 
 require 'logger'
-require File.expand_path('../chdir.rb', __FILE__)
+require File.expand_path('../chdir', __FILE__)
+require File.expand_path('../configreader-yaml', __FILE__)
 
 module TorrentsWatcher
 
@@ -13,14 +14,14 @@ class Tracker
     @owner = owner
     @file = config
     @enabled = true
-    @valid, @config = self.class.read_config_file(@file, self, 'Reading tracker description file %s')
+    @valid, @config = ConfigReaderYAML.new(self).read(@file, 'YAML: Reading tracker description file %s')
     unless @valid
       log(Logger::WARN, "WARNING! File #{config} is not a valid tracker description!")
       @enabled = false
       return
     end
     @name = @config.keys[0]
-    # only the one configuration only per file
+    # the only one configuration per file
     @config = @config[@name]
     # enabled if enabled both in config and in plugin
     @enabled = self.class.test_enabled(@config[:enabled])
@@ -40,96 +41,6 @@ class Tracker
       end
     end
     return true
-  end
-
-  def self.read_config_file(file, owner, message)
-    return nil, {} unless File.exist?(file)
-    if owner.kind_of?(Tracker)
-      owner.log(Logger::DEBUG, 'v3: ' + message % file)
-      @valid, @config = self.do_read_config_file_v3(file)
-    else
-      owner.log(Logger::DEBUG, 'v2: ' + message % file)
-      @valid, @config = self.do_read_config_file_v2(file)
-    end
-    owner.log(Logger::DEBUG, 'File valid? ' + @valid.to_s.upcase)
-    return @valid, @config
-  end
-
-  def self.do_read_config_file_v2(file)
-    config = {}
-    File.open(file, 'r') do |f|
-      while line = f.gets
-        line.strip!
-        if m = /^#/.match(line)
-          # skip commented line
-          next
-        elsif m = /^tracker:?\s+(.+)$/i.match(line)
-          tracker = m[1].to_sym
-          config[tracker] = {}
-          config[tracker][:torrents] = []
-          config[tracker][:enabled] = true
-        elsif !tracker
-          next
-        # tracker topic URL must start with "http://"
-        # or equal to ":url" (for those trackers which have fixed URL)
-        elsif m = /^(http:\/\/\S+)(\s+.+)?$/i.match(line) \
-            || m = /^(:url)$/.match(line)
-          torrent = m[1]
-          if re = m[2]
-            re.strip!
-            mailto = nil
-            # if we want to notify by mail only
-            if m = /mailto:(.+)/i.match(re)
-              # regexp must be before "mailto:" string
-              re = $`.strip
-              mailto = m[1].strip
-            end
-            # extract <regexp> from /<regexp>/
-            re.gsub!(/^\/|\/$/, '')
-            torrent = { torrent => { :regexp => Regexp.new(re), :mailto => mailto } }
-          end
-          config[tracker][:torrents] << torrent
-        elsif m = /^(\w+)\s+(.+)$/.match(line)
-          key = m[1].to_sym
-          value = m[2]
-          config[tracker][key] = value
-        end
-      end
-    end
-    config.each do |tracker, conf|
-      conf[:enabled] = eval(conf[:enabled]) if conf[:enabled].kind_of?(String)
-      # disable tracker if no URLs set to track
-      # to avoid redundant fetches
-      if conf[:torrents].size == 0
-        conf[:enabled] = false
-      end
-    end
-    return true, config
-  end
-
-  def self.normalize_config(config)
-    config.each do |k, v|
-      v[:torrent][:match_re] = Regexp.new(v[:torrent][:match_re])
-      if v[:login].kind_of?(Hash)
-        v[:login][:success_re] = Regexp.new(v[:login][:success_re]) if v[:login][:success_re]
-      end
-    end
-    return config
-  end
-
-  def self.do_read_config_file_v3(file)
-    require 'yaml'
-    config = nil
-    begin
-      config = YAML::load_file(file)
-    rescue
-    end
-    if config
-      config = normalize_config(config)
-      return config.keys.size > 0, config
-    else
-      return false, {}
-    end
   end
 
   def login_method

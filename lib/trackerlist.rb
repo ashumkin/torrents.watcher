@@ -6,8 +6,9 @@
 
 require 'logger'
 require 'fileutils'
-require File.expand_path('../tracker.rb', __FILE__)
-require File.expand_path('../../helpers/logger.rb', __FILE__)
+require File.expand_path('../configreader-v2', __FILE__)
+require File.expand_path('../tracker', __FILE__)
+require File.expand_path('../../helpers/logger', __FILE__)
 
 module TorrentsWatcher
 
@@ -20,7 +21,7 @@ class TrackerList < ::Array
     @opts = opts
     FileUtils.mkdir_p(@opts.options.config_dir)
     file = @opts.options.config
-    @valid, @logins = Tracker.read_config_file(file, self, 'Reading config file %s')
+    @valid, @logins = ConfigReaderV2.new(self).read(file, 'Reading config file %s')
     unless @valid
       if @valid.nil?
         log(Logger::ERROR, "Config #{file} is absent")
