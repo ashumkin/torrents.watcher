@@ -4,11 +4,16 @@
 require 'logger'
 require File.expand_path('../chdir', __FILE__)
 require File.expand_path('../configreader-yaml', __FILE__)
+require File.expand_path('../wgetfetcher', __FILE__)
+require File.expand_path('../headerprocessor', __FILE__)
+require File.expand_path('../trackerfiledetector', __FILE__)
+require File.expand_path('../scanner', __FILE__)
 
 module TorrentsWatcher
 
 class Tracker
   attr_reader :file, :name, :valid, :enabled
+  attr_accessor :url_fetcher
 
   def initialize(owner, config)
     @owner = owner
@@ -30,6 +35,7 @@ class Tracker
     @login_method = nil
     test_config
     log(Logger::DEBUG, 'Tracker: %s; Enabled: %s' % [@name, @enabled.to_s.upcase])
+    @url_fetcher = WgetFetcher.new(self)
   end
 
   def self.test_enabled(enabled)
@@ -89,35 +95,12 @@ private
     return dir
   end
 
-  def cookies
-    name = name_with_subst
-    return "#{tmp}/#{name}.cookies"
-  end
-
   def check_login_url
     return login_method[:check] || login_url
   end
 
   def login_url
     return login_method[:form]
-  end
-
-  def temp_html
-    return "#{tmp}/#{@name}.html"
-  end
-
-  def headers
-    return "#{tmp}/#{@name}.headers"
-  end
-
-  def wget_options
-    opts = ['-q']
-    opts << '--convert-links'
-    opts << '--keep-session-cookies'
-    opts << "--save-cookies #{cookies}"
-    opts << "--load-cookies #{cookies}"
-    opts << ['--server-response', "--output-file #{headers}"]
-    opts.join(' ')
   end
 
   def login_data
@@ -138,159 +121,45 @@ private
       end
       data << "#{k.to_s}=#{v}"
     end
-    return "\"#{data}\""
+    return "#{data}"
   end
 
-  def response_is_gzipped?(headers_file)
-    File.open(headers_file, 'r') do |f|
-      while line = f.gets do
-        if /Content-Encoding: gzip/i.match(line)
-          log(Logger::DEBUG, 'Content is gzipped')
-          return true
-        end
-      end
-    end
-    return false
-  end
-
-  def resave_gzipped_file(headers, file)
-    if response_is_gzipped?(headers)
-      require 'zlib'
-      content = nil
-      Zlib::GzipReader.open(file) do |f|
-        content = f.read
-      end
-      File.open(file, 'w') do |f|
-        f.write(content)
-      end
-    end
-  end
-
-  def run_wget(url, data = '', tofile = true)
-    file = "-O #{temp_html}" if tofile
-    cmd = "wget #{file.to_s} #{wget_options} #{url}"
-    data = data.join(' ') if data.kind_of?(Array)
-    cmd << ' ' << data.to_s
-    log(Logger::DEBUG, cmd)
-    system(cmd)
-    r = $? == 0
-    if r
-      resave_gzipped_file(headers, temp_html) if tofile
-    else
-      log(Logger::ERROR, "Error wget execution")
-    end
-    return r
+  def run_url_fetcher(url_fetcher, url, data = '')
+    url_fetcher.basename = name_with_subst
+    url_fetcher.tmp = tmp
+    url_fetcher.data = data
+    result = url_fetcher.get(url)
+    log(Logger::ERROR, 'Error getting URL: %s' % url) unless result
+    return result
   end
 
   def check_already_logged_in
-    return false unless run_wget(check_login_url)
-    return check_login
+    return false unless run_url_fetcher(@url_fetcher, check_login_url)
+    return check_login(@url_fetcher)
   end
 
   def login
     # check already logged in?
     return true if check_already_logged_in
     # no? try to log in
-    return false unless run_wget(login_url, ['--post-data', login_data])
+    return false unless run_url_fetcher(@url_fetcher, login_url, login_data)
     # check
-    return check_login
+    return check_login(@url_fetcher)
   end
 
-  def do_replace_torrent(url)
-    match_re = @config[:torrent][:match_re]
-    replace = @config[:torrent][:replace]
-    # return hash to use source link as a referer
-    return { url.gsub(match_re, replace) => { :name => url, :url => url } }
-  end
-
-  def do_scan_torrent(url, config)
-    config = [config] unless config.kind_of?(Array)
-    match_re = @config[:torrent][:match_re]
-    mi = match_index = @config[:torrent][:match_index] || 0
-    if mi.kind_of?(Array)
-      mi = match_index = mi.dup
-    end
-    if mi.kind_of?(Array)
-      match_index = mi.shift
-    else
-      mi = [mi]
-    end
-    links = {}
-    File.open(temp_html) do |f|
-      log(Logger::DEBUG, 'Scanning file %s for %s' % [temp_html, match_re])
-      while line = f.gets
-        line = convert_line(line) if @charset
-        if m = match_re.match(line)
-          link = m[match_index]
-          log(Logger::DEBUG, "Found #{link} (#{m[0]})")
-          config.each do |conf|
-            if conf.kind_of?(TrueClass)
-              matched = re = true
-              mailto = nil
-            else
-              re = conf[:regexp]
-              mailto = conf[:mailto]
-              matched = re.match(line)
-            end
-            unless matched
-              log(Logger::DEBUG, 'But not matched to ' + re.to_s)
-            else
-              log(Logger::DEBUG, 'Matched to ' + re.to_s)
-              if mi.size == 1
-                name = m[mi[0]]
-              else
-                name = mi.map { |i| m[i] }
-              end
-              links[link] = { :name => name, :mailto => mailto , :url => url }
-            end
-          end
-        end
-      end
-    end
-    return links
-  end
-
-  def scan_torrent(url, conf)
-    return unless @config[:torrent]
-    if @config[:torrent][:replace_url]
-      return do_replace_torrent(url)
-    else
-      return do_scan_torrent(url, conf)
-    end
-  end
-
-  def get_downloaded_filename
-    File.open(headers, 'r') do |f|
-      while line = f.gets
-        if m = /Content-Disposition: attachment; filename="(.+)"/i.match(line)
-          f = m[1].gsub(/\\([0-8]{3})/) { [$1.to_i(8)].pack('C')}
-          log(Logger::DEBUG, 'Filename is ' + f)
-          return f
-        end
-      end
-    end
-  end
-
-  def file_is_torrent(filename)
-    File.open(filename, 'r') do |f|
-      if (f.read(15) =~ /^d\d+:announce/)
-        return true
-      end
-    end
-    log(Logger::DEBUG, "#{filename} is NOT a torrent file!")
-    return false
-  end
-
-  def do_fetch_link(link, config, post)
+  def do_fetch_link(link, config, params)
     name = config[:name]
     log(Logger::INFO, "Fetching: #{name}")
-    params = ['--content-disposition', '-N']
-    params << '--post-data ""' if post
-    run_wget(link, params)
-    filename = get_downloaded_filename
-    if filename && file_is_torrent(temp_html)
-      log(Logger::DEBUG, "Moving #{temp_html} -> #{filename}")
-      FileUtils.mv(temp_html, filename)
+    params[:is_to_download_file] = true
+    run_url_fetcher(@url_fetcher, link, params)
+    filename = HeaderProcessor.get_downloaded_filename(@url_fetcher.headers)
+    log(Logger::DEBUG, 'Filename is ' + filename) if filename
+    file_is_torrent = TrackerFileDetector.is_a_tracker_file?(@url_fetcher.output_file)
+    if filename && file_is_torrent
+      log(Logger::DEBUG, "Moving #{@url_fetcher.output_file} -> #{filename}")
+      FileUtils.mv(@url_fetcher.output_file, filename)
+    elsif ! file_is_torrent
+      log(Logger::DEBUG, "#{@url_fetcher.output_file} is NOT a torrent file!")
     end
   end
 
@@ -352,12 +221,18 @@ EOT
       torrents = ts
     end
     links = {}
-    torrents.each do |t, conf|
-      log_separator(t)
-      if run_wget(t)
-        links.merge!(scan_torrent(t, conf))
+    if torrents
+      torrents.each do |t, conf|
+        log_separator(t)
+        if run_url_fetcher(@url_fetcher, t)
+          if @config[:torrent]
+            torrent_scanner = TorrentScanner.new(self)
+            urls = torrent_scanner.scan(@url_fetcher.output_file, @config[:torrent], t, conf)
+            links.merge!(urls)
+          end
+        end
+        log_separator(nil, '<')
       end
-      log_separator(nil, '<')
     end
     ChDir.new(tmp) do
       log_separator('PROCESSING: BEGIN')
@@ -367,15 +242,15 @@ EOT
         if mailto
           notify(link, config)
         else
-          do_fetch_link(link, config, post)
+          do_fetch_link(link, config, {:method_post => post})
         end
       end
       log_separator('PROCESSING: END')
     end
   end
 
-  def scanhtml4charset
-    File.open(temp_html, 'r') do |f|
+  def scanhtml4charset(output_file)
+    File.open(output_file, 'r') do |f|
       while line = f.gets
         begin
           if m = /content=('|")text\/html;\s*charset=(\S+)\1/i.match(line) \
@@ -395,21 +270,21 @@ EOT
     if line.respond_to?('encode!')
       line.encode!('UTF-8', @charset)
     else
-      # Iconv must already be loaded in check_login
+      # iconv is deprecated in Ruby 1.9.x
+      require 'iconv'
       line = Iconv.iconv('UTF-8', @charset, line)[0]
     end
   end
 
-  def check_login
+  def check_login(url_fetcher)
     r = true
     success_re = login_method[:success_re] if login_method
-    # iconv is deprecated in Ruby 1.9.x
-    require 'iconv' if (@charset = scanhtml4charset) && ! String.new.respond_to?('encode!')
-    r = File.size(temp_html) == 0 if File.exists?(temp_html)
-    File.open(temp_html, 'r') do |f|
+    @charset = scanhtml4charset(url_fetcher.output_file)
+    r = File.size(url_fetcher.output_file) == 0 if File.exists?(url_fetcher.output_file)
+    File.open(url_fetcher.output_file, 'r') do |f|
       while line = f.gets
         line = convert_line(line) if @charset
-        if success_re.match(line)
+        if success_re && success_re.match(line)
           r = true
           break
         end
