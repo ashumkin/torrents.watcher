@@ -13,17 +13,17 @@ class Tracker
     @owner = owner
     @file = config
     @enabled = true
-    @valid, @hash = self.class.read_config_file(@file, self, 'Reading tracker description file %s')
+    @valid, @config = self.class.read_config_file(@file, self, 'Reading tracker description file %s')
     unless @valid
       log(Logger::WARN, "WARNING! File #{config} is not a valid tracker description!")
       @enabled = false
       return
     end
-    @name = @hash.keys[0]
+    @name = @config.keys[0]
     # only the one configuration only per file
-    @hash = @hash[@name]
+    @config = @config[@name]
     # enabled if enabled both in config and in plugin
-    @enabled = self.class.test_enabled(@hash[:enabled])
+    @enabled = self.class.test_enabled(@config[:enabled])
     # disable if user config for tracker is absent
     @enabled &&= logins ? self.class.test_enabled(logins[:enabled]) : false
     @login_method = nil
@@ -135,28 +135,28 @@ class Tracker
   def login_method
     # use caching
     return @login_method if @login_method
-    if @hash[:login].kind_of?(::Symbol)
-      log(Logger::DEBUG, 'Using ' + @hash[:login].to_s + ' login details')
-      @login_method = @owner.find_tracker(@hash[:login]).login_method
+    if @config[:login].kind_of?(::Symbol)
+      log(Logger::DEBUG, 'Using ' + @config[:login].to_s + ' login details')
+      @login_method = @owner.find_tracker(@config[:login]).login_method
     else
-      @login_method = @hash[:login]
+      @login_method = @config[:login]
     end
     return @login_method
   end
 
 private
   def test_config
-    raise '%s: No :torrect section!' % @name unless @hash[:torrent]
-    raise '%s: :match_re must be a Regexp!' % @name unless @hash[:torrent][:match_re].kind_of?(Regexp)
-    mi = @hash[:torrent][:match_index]
+    raise '%s: No :torrect section!' % @name unless @config[:torrent]
+    raise '%s: :match_re must be a Regexp!' % @name unless @config[:torrent][:match_re].kind_of?(Regexp)
+    mi = @config[:torrent][:match_index]
     unless mi.nil? || mi.kind_of?(Integer) || (mi.kind_of?(Array) && mi.size == 2)
       raise '%s: :match_index must be an integer or an array of two integers!' % @name
     end
   end
 
   def name_with_subst
-    if @hash[:login].kind_of?(::Symbol)
-      return @hash[:login]
+    if @config[:login].kind_of?(::Symbol)
+      return @config[:login]
     else
       return @name
     end
@@ -286,16 +286,16 @@ private
   end
 
   def do_replace_torrent(url)
-    match_re = @hash[:torrent][:match_re]
-    replace = @hash[:torrent][:replace]
+    match_re = @config[:torrent][:match_re]
+    replace = @config[:torrent][:replace]
     # return hash to use source link as a referer
     return { url.gsub(match_re, replace) => { :name => url, :url => url } }
   end
 
   def do_scan_torrent(url, config)
     config = [config] unless config.kind_of?(Array)
-    match_re = @hash[:torrent][:match_re]
-    mi = match_index = @hash[:torrent][:match_index] || 0
+    match_re = @config[:torrent][:match_re]
+    mi = match_index = @config[:torrent][:match_index] || 0
     if mi.kind_of?(Array)
       mi = match_index = mi.dup
     end
@@ -340,8 +340,8 @@ private
   end
 
   def scan_torrent(url, conf)
-    return unless @hash[:torrent]
-    if @hash[:torrent][:replace_url]
+    return unless @config[:torrent]
+    if @config[:torrent][:replace_url]
       return do_replace_torrent(url)
     else
       return do_scan_torrent(url, conf)
@@ -415,8 +415,8 @@ EOT
   end
 
   def fetch_urls
-    post = @hash[:torrent][:post]
-    torrents = @hash[:torrent][:url]
+    post = @config[:torrent][:post]
+    torrents = @config[:torrent][:url]
     torrents = logins[:torrents] unless torrents
     torrents = [torrents] if torrents.kind_of?(String)
     torrents = @owner.logins[@name][:torrents] if torrents == :config
