@@ -305,6 +305,8 @@ private
       mi = [mi]
     end
     links = {}
+    # scan for charset every time
+    @charset = scanhtml4charset
     File.open(temp_html) do |f|
       log(Logger::DEBUG, 'Scanning file %s for %s' % [temp_html, match_re])
       while line = f.gets
@@ -464,12 +466,14 @@ EOT
   end
 
   def scanhtml4charset
-    File.open(temp_html, 'r') do |f|
+    log(Logger::DEBUG, "Scanning #{temp_html} for charset")
+    File.open(temp_html, 'r:BINARY') do |f|
       while line = f.gets
         begin
           if m = /content=('|")text\/html;\s*charset=(\S+)\1/i.match(line) \
               || m = /meta charset=(")(\S+)\1/i.match(line)
             charset = m[2]
+            log(Logger::DEBUG, "found charset #{charset}")
             return charset
           end
         rescue
@@ -492,8 +496,9 @@ EOT
   def check_login
     r = true
     success_re = login_method[:success_re] if login_method
+    @charset = scanhtml4charset
     # iconv is deprecated in Ruby 1.9.x
-    require 'iconv' if (@charset = scanhtml4charset) && ! String.new.respond_to?('encode!')
+    require 'iconv' if @charset && ! String.new.respond_to?('encode!')
     r = File.size(temp_html) == 0 if File.exists?(temp_html)
     File.open(temp_html, 'r') do |f|
       while line = f.gets

@@ -1,0 +1,17 @@
+# vim: set filetype=yaml expandtab tabstop=4 shiftwidth=4:
+:tfile-video.cc:
+    :enabled: 1
+    :login:
+        # login page URL
+        :form: http://tfile-video.cc/login/
+        # loging fields
+        :fields:
+            # symbols are taken from user config variables
+            # other values are set as is
+            :user: :username
+            :password: :password
+            # `login` field is mandatory!
+            :login: ''
+        :success_re: type="password"
+    :torrent:
+        :match_re:  http://tfile-video.cc/forum/download\.php\?id=\d+
